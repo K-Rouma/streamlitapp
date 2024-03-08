@@ -1,0 +1,74 @@
+version: '3'
+
+services:
+  db1:
+    image: mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=password
+      - MYSQL_DATABASE=mydatabase
+      - MYSQL_USER=user
+      - MYSQL_PASSWORD=password
+    volumes:
+      - data1:/var/lib/mysql
+    networks:
+      - app_network
+
+  db2:
+    image: mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=password
+      - MYSQL_DATABASE=mydatabase
+      - MYSQL_USER=user
+      - MYSQL_PASSWORD=password
+    networks:
+      - app_network
+    
+  app1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URLS=mysql+pymysql://user:password@172.19.0.3:3306/mydatabase
+    ports:
+      - "4545:8501"
+    volumes:
+      - .:/app
+      - .streamlit/secrets.toml:/root/.streamlit/secrets.toml
+    networks:
+      - app_network
+
+
+  app2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URLS=mysql+pymysql://user:password@172.19.0.3:3306/mydatabase
+    ports:
+      - "4546:8501"
+    volumes:
+      - .:/app
+      - .streamlit/secrets.toml:/root/.streamlit/secrets.toml
+    networks:
+      - app_network
+
+  loadbalancer:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      - app1
+      - app2
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+    networks:
+      - app_network
+  
+volumes:
+  data1:
+
+networks:
+  app_network:
+    driver: bridge
